@@ -141,6 +141,12 @@ def main():
     parser.add_argument("--fastq", required=True, type=Path)
     parser.add_argument("--inventory", required=True, type=Path)
     parser.add_argument("--reference", required=True, type=Path)
+    parser.add_argument(
+        "--reference-build",
+        required=True,
+        choices=["GRCh38"],
+        help="Declared reference build. Only GRCh38 is supported.",
+    )
     parser.add_argument("--sample", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--min-mapq", type=int, default=20)

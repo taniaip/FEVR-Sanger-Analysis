@@ -18,8 +18,8 @@ SHEETS = [
     ("Indel_Quality", "variants/{s}_Indel_Quality_Evidence_Audit.csv"),
     ("Raw_SNVs", "variants/{s}_Preliminary_SNV_Read_Evidence.csv"),
     ("Raw_Indels", "variants/{s}_Preliminary_Indel_Read_Evidence.csv"),
-    ("Target_Coverage", "coverage/{s}_KIF11_E10_Position_Coverage.csv"),
-    ("Alignment_Details", "coverage/{s}_KIF11_E10_Alignment_Details.csv"),
+    ("Target_Coverage", "coverage/{s}_{gene}_{target}_Position_Coverage.csv"),
+    ("Alignment_Details", "coverage/{s}_{gene}_{target}_Alignment_Details.csv"),
     ("Alignment_QC", "alignment/{s}_Read_Alignment_QC.csv"),
     ("Duplicate_Audit", "duplicates/{s}_AB1_Duplicate_Audit.csv"),
     ("Plasmid_Primer_QC", "plasmid/{s}_MAP3K6_Plasmid_Primer_QC.csv"),
@@ -92,6 +92,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-dir", required=True, type=Path)
     parser.add_argument("--sample", required=True)
+    parser.add_argument("--gene", default="KIF11")
+    parser.add_argument("--target", default="E10")
+    parser.add_argument(
+        "--reference-label",
+        default="GRCh38 chr10 (KIF11 genomic reads)",
+        help="Reference genome/build description for the Summary worksheet.",
+    )
     parser.add_argument("--output", required=True, type=Path)
 
     args = parser.parse_args()
@@ -106,7 +113,7 @@ def main():
     summary_rows = [
         ["FEVR Sanger Sequencing — Analysis Summary", ""],
         ["Sample", args.sample],
-        ["Reference", "GRCh38 chr10 (KIF11 genomic reads)"],
+        ["Reference", args.reference_label],
         ["Analysis status", "PRELIMINARY / UNVALIDATED"],
         ["Interpretation", "Read-level evidence; not clinical variant calls"],
         ["Plasmid analysis", "Primer QC only; no plasmid variant calling"],
@@ -119,7 +126,7 @@ def main():
     row_counts = {}
 
     for name, template in SHEETS:
-        path = results_dir / template.format(s=args.sample)
+        path = results_dir / template.format(s=args.sample, gene=args.gene, target=args.target)
 
         if not path.is_file():
             parser.error(f"Missing required CSV: {path}")

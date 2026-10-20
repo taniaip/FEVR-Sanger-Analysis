@@ -112,3 +112,10 @@ Zenodo DOI: **To be added after archival.**
 ## License
 
 **Not yet selected.** Confirm ownership and release permissions with the research team before choosing a license or making the repository public.
+
+
+## Reference-build and target configuration
+
+The genomic analysis pipeline currently supports GRCh38 coordinates only. Script 04 requires --reference-build GRCh38 alongside --reference. This argument declares the build but does not verify the FASTA sequence; users must verify the reference source and checksum independently.
+
+Script 12 supports --gene, --target, and --reference-label. Its defaults preserve the Sample 426 KIF11 E10 workflow. Changing the reference label does not convert genomic coordinates or validate the reference sequence.
