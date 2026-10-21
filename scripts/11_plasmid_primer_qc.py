@@ -23,7 +23,7 @@ PRIMERS = (
 )
 
 PRIMER_PATTERN = re.compile(
-    r"(?i)MAP3K6_+plasmid_+\d+_+(M13F|M13R|F[1-6]|R[1-6])(?=_)"
+    r"(?i)MAP3K6_+(?:plasmid_+\d+|MUT2-\d+)_+(M13F|M13R|F[1-6]|R[1-6])(?=_)"
 )
 
 
@@ -119,18 +119,19 @@ def main():
             )
 
         primer = match.group(1).upper()
+        construct = "MUT2" if "MUT2" in filename.upper() else "ORIGINAL"
 
         if read_id not in trim_lookup:
             raise ValueError(
                 f"Missing trimming QC for {read_id}"
             )
 
-        groups[primer].append({
+        groups[(construct, primer)].append({
             "Read_ID": read_id,
             "Status": trim_lookup[read_id][status_column],
         })
 
-    unexpected = set(groups) - set(PRIMERS)
+    unexpected = {primer for _, primer in groups} - set(PRIMERS)
 
     if unexpected:
         raise ValueError(
@@ -173,35 +174,36 @@ def main():
 
     output_rows = []
 
-    for primer in PRIMERS:
-        records = groups.get(primer, [])
+    for construct in sorted({key[0] for key in groups}):
+        for primer in PRIMERS:
+            records = groups.get((construct, primer), [])
 
-        retained = [
-            item["Read_ID"]
-            for item in records
-            if item["Status"] in retained_values
-        ]
+            retained = [
+                item["Read_ID"]
+                for item in records
+                if item["Status"] in retained_values
+            ]
 
-        excluded = [
-            item["Read_ID"]
-            for item in records
-            if item["Status"] not in retained_values
-        ]
+            excluded = [
+                item["Read_ID"]
+                for item in records
+                if item["Status"] not in retained_values
+            ]
 
-        output_rows.append({
-            "Sample": args.sample,
-            "Gene": "MAP3K6",
-            "Sequencing_group": "PLASMID",
-            "Primer": primer,
-            "Total_reads": len(records),
-            "Retained_reads": len(retained),
-            "Excluded_reads": len(excluded),
-            "Retained_read_IDs": ";".join(sorted(retained)),
-            "Excluded_read_IDs": ";".join(sorted(excluded)),
-            "Analysis_scope": "PRIMER_QC_ONLY",
-            "Variant_validation_status": "NOT_ASSESSED",
-        })
-
+            output_rows.append({
+                "Sample": args.sample,
+                "Gene": "MAP3K6",
+                "Sequencing_group": "PLASMID",
+                "Primer": primer,
+                "Construct": construct,
+                "Total_reads": len(records),
+                "Retained_reads": len(retained),
+                "Excluded_reads": len(excluded),
+                "Retained_read_IDs": ";".join(sorted(retained)),
+                "Excluded_read_IDs": ";".join(sorted(excluded)),
+                "Analysis_scope": "PRIMER_QC_ONLY",
+                "Variant_validation_status": "NOT_ASSESSED",
+            })
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = (

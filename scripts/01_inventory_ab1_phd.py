@@ -27,7 +27,7 @@ def parse_filename(filename, sample):
     stem = Path(filename).stem
 
     plasmid_match = re.search(
-        rf"MAP3K6_+plasmid_+{re.escape(sample)}_+"
+        rf"MAP3K6_+(?:plasmid_+{re.escape(sample)}|MUT2-{re.escape(sample)})_+"
         r"(M13F|M13R|F[1-6]|R[1-6])(?=_|$)",
         stem,
         flags=re.IGNORECASE,
