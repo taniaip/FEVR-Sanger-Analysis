@@ -18,3 +18,33 @@ __pycache__/
 data/
 results/
 references/
+# Compressed sequencing and analysis files
+*.ab1.gz
+*.fastq.gz
+*.fq.gz
+*.fasta.gz
+*.fa.gz
+*.vcf.gz
+*.g.vcf
+*.g.vcf.gz
+*.cram
+*.crai
+*.bcf
+*.tsv
+*.tsv.gz
+*.bed
+*.bed.gz
+*.jsonl
+# Local patient metadata and sequencing outputs
+metadata/*.csv
+metadata/*.tsv
+*.phd
+*.phd.*
+*.scf
+*.seq
+*.qual
+*.h5
+*.hdf5
+# Temporary development backups
+*.pre_*.py
+*backup*.py

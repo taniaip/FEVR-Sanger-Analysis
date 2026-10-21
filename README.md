@@ -1,121 +1,130 @@
 # FEVR Sanger Sequencing Analysis
 
-Python scripts for Sanger sequencing quality control, genomic alignment, and **preliminary, unvalidated** variant-evidence assessment in familial exudative vitreoretinopathy (FEVR) research.
+A research-use Python workflow for Sanger read quality control, genomic alignment, preliminary SNV/indel evidence assessment, and sample-, gene-, and target-level QC reporting in familial exudative vitreoretinopathy (FEVR) research.
 
-> **Research use only.** This workflow does not provide validated genotypes, clinical classifications, or diagnostic results. All candidate variants require independent review and confirmation.
+> **Research use only.** This workflow does not provide validated genotypes, pathogenicity classifications, clinical diagnoses, or evidence of a variant-negative sample. All candidate observations remain `UNVALIDATED`.
 
-## Workflow
+## Generalized 11-stage workflow
 
-Run the scripts in numerical order, providing each script with the input files produced by the preceding step.
+Run `run_generalized_pipeline.py` from the repository root. The generalized pipeline uses the existing PHD extraction and quality trimming scripts, alongside the newer generalized analysis scripts.
 
-| Script | Purpose |
-| --- | --- |
-| `01_inventory_ab1_phd.py` | Inventory AB1 chromatograms and matching Phred PHD files; parse filename metadata. |
-| `02_extract_phd_sequences.py` | Extract sequences and base qualities from PHD files and produce initial QC outputs. |
-| `03_quality_trim.py` | Quality-trim sequencing reads and separate genomic and plasmid reads. |
-| `04_align_genomic_reads.py` | Align genomic reads to a user-supplied reference using minimap2 and samtools. |
-| `05_alignment_coverage.py` | Summarize passing alignments and reference-position coverage. |
-| `06_duplicate_audit.py` | Audit AB1 files for byte-identical duplicates using SHA-256. |
-| `07_extract_variants.py` | Extract preliminary SNV and indel observations from aligned reads. |
-| `08_snv_evidence.py` | Assess base-quality and read-level reference/alternate evidence for SNVs. |
-| `09_indel_evidence.py` | Assess preliminary deletion evidence and flanking base quality. |
-| `10_consolidate_candidates.py` | Combine candidate observations and evidence summaries. |
-| `11_plasmid_primer_qc.py` | Summarize MAP3K6 plasmid read quality by primer; does not call plasmid variants. |
-| `12_generate_workbook.py` | Consolidate analysis tables into a multi-sheet Excel workbook. |
+| Stage | Script | Purpose |
+| --- | --- | --- |
+| 1 | `scripts/01b_generalized_inventory.py` | Inventory AB1/PHD pairs and parse gene, target, direction, and metadata review status. |
+| 2 | `scripts/02_extract_phd_sequences.py` | Extract base calls and quality scores; report initial read QC. |
+| 3 | `scripts/03_quality_trim.py` | Trim reads and separate genomic and plasmid sequencing groups. |
+| 4 | `scripts/04b_generalized_alignment.py` | Align genomic reads with minimap2/samtools and assess alignment QC. |
+| 5 | `scripts/05b_generalized_coverage.py` | Summarize passing reads and observed reference-position coverage. |
+| 6 | `scripts/07b_generalized_variant_extraction.py` | Extract preliminary read-level SNV, deletion, and insertion observations. |
+| 7 | `scripts/08b_generalized_snv_evidence.py` | Assess SNV quality and supporting/opposing read evidence. |
+| 8 | `scripts/09b_generalized_deletion_evidence.py` | Assess deletion support and flanking base quality. |
+| 9 | `scripts/09c_generalized_insertion_evidence.py` | Assess insertion support and flanking base quality. |
+| 10 | `scripts/10b_generalized_candidates.py` | Consolidate read-level candidate observations and evidence flags. |
+| 11 | `scripts/11b_generalized_qc_report.py` | Generate descriptive sample-, gene-, and target-level QC summaries. |
+
+The original `run_pipeline.py` and numbered scripts are retained for the legacy workflow, including duplicate auditing, MAP3K6 plasmid primer QC, and Excel workbook generation.
 
 ## Requirements
 
 - Python 3
-- Python package: `openpyxl>=3.1,<4` (listed in `requirements.txt`)
-- External command-line tools: **minimap2** and **samtools**
+- `minimap2` and `samtools` available on your `PATH`
+- A suitable **independently verified** GRCh38 reference FASTA containing the chromosomes required for the targeted genes
+- AB1 chromatograms (`.ab1`) and corresponding Phred files (`.phd.1`)
 
-Install the Python dependency from the repository root:
-
-```bash
-python3 -m pip install -r requirements.txt
-```
-
-Install minimap2 and samtools separately. For example, on macOS with Homebrew:
+On macOS, users who do **not** already have the external tools can install them with:
 
 ```bash
 brew install minimap2 samtools
 ```
 
-Check their availability with `minimap2 --version` and `samtools --version`.
-
-## Inputs and filename conventions
-
-The inventory stage expects Sanger chromatograms (`.ab1`) and corresponding Phred files (`.phd.1`). A suitable reference FASTA is required for genomic alignment.
-
-The current inventory parser recognizes genomic labels `CDH5`, `KIF11`, `LRP5`, `NDP`, and `TSPAN12`, and MAP3K6 plasmid primer labels `F1`–`F6`, `R1`–`R6`, `M13F`, and `M13R`. Parsing depends on the filenames following the expected naming conventions; other naming schemes may require code changes.
-
-### Example: inventory
+If both tools are already installed, skip that step. Verify availability with:
 
 ```bash
-python3 scripts/01_inventory_ab1_phd.py \
-  --input /path/to/sample_directory \
+minimap2 --version
+samtools --version
+```
+
+The generalized runner uses the Python standard library plus these external command-line tools. The legacy Excel workbook workflow additionally uses `openpyxl`, listed in `requirements.txt`:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+## Run the generalized pipeline
+
+From the repository root, with your own private sample and reference paths:
+
+```bash
+python3 run_generalized_pipeline.py \
   --sample SAMPLE_ID \
-  --output /path/to/private_results/inventory.csv
+  --input /path/to/private/sample_directory \
+  --reference /path/to/verified/GRCh38_reference.fa \
+  --reference-build GRCh38 \
+  --output-dir /path/to/private/results/SAMPLE_ID_generalized
 ```
 
-The inventory CSV contains absolute paths and original filenames. Treat it as potentially sensitive.
+The output directory must not exist before the run; the runner refuses to overwrite it. If filename metadata has been independently verified, an optional `--overrides /path/to/private/filename_overrides.csv` argument may be supplied. Do not guess metadata corrections.
 
-For the remaining scripts, inspect their actual command-line options before running them:
+The `--reference-build` label does **not** authenticate the reference sequence. Confirm its provenance, checksum, contig names, assembly, and target coordinates separately. The current analysis is designed around GRCh38 coordinates; changing the label is not a genome-build conversion.
 
-```bash
-python3 scripts/02_extract_phd_sequences.py --help
-```
+## Gene and filename support
 
-Repeat with the relevant script name. This README intentionally does not prescribe unverified command-line options for later stages. The scripts have been run sequentially for an initial research sample; a clean-environment end-to-end test is still needed before claiming general portability.
+The generalized filename parser recognizes the labels `ADAM10`, `CDH5`, `FZD4`, `FZD7`, `GAPDH`, `IQGAP1`, `KIF11` (including `KIFF11`), `LRP5`, `MAP3K6`, `NDP`, `OLFM3`, `TSPAN12`, and `ZNF408` in the project's naming conventions. Recognition is not a guarantee of mapping, coverage, or biological identity.
 
-## Reference and analysis scope
+Gene, target, and direction values derived from filenames are **parser assignments**, not verified laboratory metadata. Ambiguous records are marked `REVIEW`. Such reads may be retained in preliminary outputs; their uncertainty must be resolved before scientific interpretation.
 
-The initial development run used a GRCh38 chromosome 10 reference for **KIF11** genomic reads. Confirm the reference assembly, contig identifiers, target coordinates, and strand conventions before interpreting any result. Some output labels are specific to KIF11 exon 10 and GRCh38; the workflow has **not** been demonstrated to be fully gene-agnostic.
+The generalized runner analyzes genomic reads. The legacy MAP3K6 plasmid workflow is separate and does not establish plasmid variant calls. Some reused extraction/trimming outputs still have KIF11-specific filenames even though the files can contain genomic reads from other genes.
 
-The MAP3K6 plasmid branch performs primer-level quality control only; it does not compare plasmid sequences against a verified plasmid reference or call plasmid variants.
+## Outputs and interpretation
 
-## Output interpretation
+The output directory contains `initial/`, `trimmed/`, `alignment/`, `coverage/`, `variants/`, `snv_evidence/`, `deletion_evidence/`, `insertion_evidence/`, `candidates/`, and `qc_report/`, plus the inventory CSV.
 
-The workbook generator creates 13 worksheets: `Summary`, `Candidates`, `Candidate_Summary`, `SNV_Evidence`, `Indel_Quality`, `Raw_SNVs`, `Raw_Indels`, `Target_Coverage`, `Alignment_Details`, `Alignment_QC`, `Duplicate_Audit`, `Plasmid_Primer_QC`, and `Trim_QC`.
+The `qc_report/` directory contains:
 
-`Candidates` contains **read-level observations**, not necessarily unique alleles. Repeated observations of the same allele can occupy multiple rows.
+| File | Description |
+| --- | --- |
+| `<sample>_Sample_QC_Summary.csv` | Overall read counts, passing alignments, review flags, and candidate QC counts. |
+| `<sample>_Gene_QC_Summary.csv` | Genomic read and candidate counts by gene, including genes without passing alignments. |
+| `<sample>_Target_QC_Summary.csv` | Observed passing-read and reference-position coverage metrics by target. |
+
+**`NO_PASSING_READS` means insufficient usable sequencing evidence, not a negative result.** The runner stops before downstream variant analysis if zero genomic reads pass alignment QC. If a sample has no observed SNVs, deletions, or insertions in a category, the corresponding evidence CSV is header-only rather than a pipeline failure.
+
+Candidate CSV rows are **read-level observations**, not necessarily distinct variant alleles. Multiple read IDs do not prove biological independence. A passing alignment does not prove that each base call is reliable.
 
 ### Scientific limitations
 
-- **All preliminary variant observations remain `UNVALIDATED`.** They are not clinical findings.
-- Different AB1 file hashes establish only that files are not byte-identical; they **do not establish biological independence** of the sequencing evidence.
-- Multiple read IDs or forward/reverse primer labels do not, by themselves, establish independent biological confirmation.
-- Base-quality thresholds and read-level evidence are screening criteria, not variant validation.
-- Preliminary indel representations are **not normalized**; equivalent events may have different representations.
-- The indel-quality assessment focuses on deletions; insertion validation is not implemented.
-- Alignment artifacts, low-quality sequence, and primer-related effects may produce apparent differences.
-- No pathogenicity classification or clinical interpretation is performed.
+- All candidate observations remain `UNVALIDATED`; no genotype or clinical interpretation is performed.
+- Q20 thresholds and read-level evidence are preliminary screening criteria, not confirmation.
+- Metadata marked `REVIEW` requires independent verification.
+- Indels are not normalized; repeated-sequence contexts can produce ambiguous equivalent representations.
+- Sequencing artifacts, low-quality bases, primer effects, and alignment ambiguity may generate apparent variants.
+- Observed coverage does not establish complete exon or gene coverage; exon completeness is not assessed.
+- No passing reads for a gene or target must never be interpreted as evidence of no variant.
+- Independent confirmation and formal scientific/clinical validation remain outside this pipeline.
 
-Independent confirmation, scientific review, and any necessary clinical validation are outside the scope of these scripts.
+## Technical testing status
+
+The generalized pipeline has completed internal research runs on three samples with different gene compositions and QC characteristics. Tests include exact reproducibility comparisons for the ten-stage pipeline and **17 CSV datasets** after integrating Stage 11, plus empty-category SNV/deletion/insertion handling and QC reporting for a gene with no passing reads.
+
+These are **technical consistency tests**, not comprehensive biological validation. Synthetic fixtures, clean-environment testing, reference provenance checks, and additional independent scientific review are recommended before broader use.
 
 ## Data privacy and version control
 
-The repository `.gitignore` excludes raw chromatograms, PHD files, sequence files, alignments, reference FASTA files, CSV tables, Excel workbooks, and `data/`, `results/`, and `references/` directories. These exclusions help prevent accidental commits but **do not replace a manual review** of staged files or institutional data-sharing approval.
+Do not commit patient AB1/PHD files, sample metadata, identifying filenames, private paths, reference data without redistribution rights, or patient-level analysis results. The repository `.gitignore` excludes common sequencing and analysis formats and the `data/`, `results/`, and `references/` directories, but ignore rules are not a substitute for inspecting the staged files and their contents.
 
-Before any public push, inspect staged files using `git diff --cached --name-only` and `git diff --cached`. Do not commit patient-identifiable metadata, private local paths, raw data, or sample-specific results without explicit authorization.
+Before committing, review:
 
-## Reproducibility status
+```bash
+git diff --cached --name-only
+git diff --cached
+```
 
-The scripts were developed and executed for research Sample 426, with outputs retained locally and excluded from public version control. Reproducing the initial run requires appropriate access to the underlying research data and reference. Synthetic test fixtures, automated tests, a clean-environment run, and final scientific code review remain recommended before formal release.
+Use synthetic or appropriately authorized examples for any public repository.
 
-## Code availability and citation
+## Legacy workflow
 
-GitHub repository URL: **To be added after publication.**
+The original `run_pipeline.py` and scripts `01_inventory_ab1_phd.py` through `12_generate_workbook.py` remain available for the earlier research workflow. That workflow includes duplicate auditing, plasmid primer QC, and Excel workbook generation, and has distinct scope and output conventions from the generalized runner.
 
-Zenodo DOI: **To be added after archival.**
+## License and release
 
-## License
-
-**Not yet selected.** Confirm ownership and release permissions with the research team before choosing a license or making the repository public.
-
-
-## Reference-build and target configuration
-
-The genomic analysis pipeline currently supports GRCh38 coordinates only. Script 04 requires --reference-build GRCh38 alongside --reference. This argument declares the build but does not verify the FASTA sequence; users must verify the reference source and checksum independently.
-
-Script 12 supports --gene, --target, and --reference-label. Its defaults preserve the Sample 426 KIF11 E10 workflow. Changing the reference label does not convert genomic coordinates or validate the reference sequence.
+No license has been selected. Confirm research-team ownership, institutional requirements, and release approval before making the repository public.
