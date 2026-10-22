@@ -141,7 +141,7 @@ def main():
 
         groups = {row.get("Sequencing_group") for row in rows}
 
-        if not groups.issubset({"GENOMIC_FEVR", "PLASMID"}):
+        if not groups.issubset({"GENOMIC_FEVR", "PLASMID", "UNCLASSIFIED"}):
             raise ValueError(f"Unsupported sequencing groups: {groups}")
 
         genomic_count = sum(
