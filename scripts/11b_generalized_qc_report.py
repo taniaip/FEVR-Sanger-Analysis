@@ -33,6 +33,10 @@ def write_csv(path, columns, rows):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sample", required=True)
+    parser.add_argument(
+        "--skip-missing-phd", action="store_true",
+        help="Accept explicitly documented missing-PHD inventory reads",
+    )
     parser.add_argument("--results-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
@@ -79,7 +83,51 @@ def main():
     trim_ids = unique_ids(trimmed, "trimming QC")
     alignment_ids = unique_ids(alignment, "alignment QC")
 
-    if inventory_ids != initial_ids or inventory_ids != trim_ids:
+    if args.skip_missing_phd:
+        skipped_path = (
+            base / "initial" / f"{sample}_Skipped_PHD_Reads.csv"
+        )
+
+        if not skipped_path.is_file():
+            raise ValueError("Missing skipped-PHD audit report")
+
+        skipped = read_csv(skipped_path, sample)
+        skipped_ids = unique_ids(skipped, "skipped PHD")
+
+        inventory_by_read = {
+            row["Read_ID"]: row for row in inventory
+        }
+
+        if any(
+            row.get("Reason") != "MISSING_PHD"
+            for row in skipped
+        ):
+            raise ValueError("Unexpected skipped-read reason")
+
+        if any(
+            read_id not in inventory_by_read
+            or inventory_by_read[read_id].get("Inventory_flag")
+            != "MISSING_PHD"
+            for read_id in skipped_ids
+        ):
+            raise ValueError(
+                "Skipped reads are not flagged MISSING_PHD in inventory"
+            )
+
+        if initial_ids != trim_ids:
+            raise ValueError("Initial QC and trimming IDs differ")
+
+        if initial_ids & skipped_ids:
+            raise ValueError(
+                "Skipped-PHD reads unexpectedly appear in initial QC"
+            )
+
+        if initial_ids | skipped_ids != inventory_ids:
+            raise ValueError(
+                "Inventory IDs do not match extracted plus skipped reads"
+            )
+
+    elif inventory_ids != initial_ids or inventory_ids != trim_ids:
         raise ValueError("Inventory, initial QC and trimming IDs differ")
 
     if not alignment_ids.issubset(inventory_ids):

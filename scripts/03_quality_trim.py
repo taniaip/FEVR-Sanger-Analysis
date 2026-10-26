@@ -138,6 +138,10 @@ def main():
     parser.add_argument("--fastq", required=True, type=Path)
     parser.add_argument("--inventory", required=True, type=Path)
     parser.add_argument("--sample", required=True)
+    parser.add_argument(
+        "--skip-missing-phd", action="store_true",
+        help="Allow missing FASTQ records only for inventory rows flagged MISSING_PHD",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
 
     parser.add_argument("--window", type=int, default=20)
@@ -165,15 +169,40 @@ def main():
         if row["Sample"] == args.sample
     ]
 
-    if len(inventory) != len(records):
-        parser.error(
-            "Inventory/FASTQ read count mismatch"
-        )
+    inventory_ids = {row["Read_ID"] for row in inventory}
+    record_ids = set(records)
 
-    if set(row["Read_ID"] for row in inventory) != set(records):
-        parser.error(
-            "Inventory/FASTQ read identifiers do not match"
-        )
+    if len(inventory_ids) != len(inventory):
+        parser.error("Duplicate Read_ID values in inventory")
+
+    unexpected = record_ids - inventory_ids
+    missing = inventory_ids - record_ids
+
+    allowed_missing = {
+        row["Read_ID"]
+        for row in inventory
+        if row.get("Inventory_flag") == "MISSING_PHD"
+    }
+
+    if unexpected:
+        parser.error(f"Unexpected FASTQ read IDs: {sorted(unexpected)}")
+
+    if missing and (
+        not args.skip_missing_phd
+        or not missing.issubset(allowed_missing)
+    ):
+        parser.error(f"Unexpected missing FASTQ read IDs: {sorted(missing)}")
+
+    if not args.skip_missing_phd and len(inventory) != len(records):
+        parser.error("Inventory/FASTQ read count mismatch")
+
+    inventory = [
+        row for row in inventory
+        if row["Read_ID"] in record_ids
+    ]
+
+    if not inventory:
+        parser.error("No reads available for trimming")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

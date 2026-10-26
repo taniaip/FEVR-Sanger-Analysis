@@ -109,6 +109,8 @@ def main():
 
     parser.add_argument("--inventory", required=True, type=Path)
     parser.add_argument("--sample", required=True)
+    parser.add_argument("--skip-missing-phd", action="store_true",
+                        help="Skip missing PHD files and report them separately")
     parser.add_argument("--output-dir", required=True, type=Path)
 
     parser.add_argument("--min-length", type=int, default=100)
@@ -150,12 +152,22 @@ def main():
 
     extracted = []
     qc_rows = []
+    skipped_rows = []
 
     for row in selected:
         phd = Path(row["PHD_path"])
 
         if not phd.is_file():
-            parser.error(f"Missing PHD file: {phd}")
+            if not args.skip_missing_phd:
+                parser.error(f"Missing PHD file: {phd}")
+            skipped_rows.append({
+                "Sample": row["Sample"],
+                "Read_ID": row["Read_ID"],
+                "Filename": row["Filename"],
+                "PHD_path": str(phd),
+                "Reason": "MISSING_PHD",
+            })
+            continue
 
         sequence, qualities = parse_phd(phd)
 
@@ -179,6 +191,9 @@ def main():
             "Filename": row["Filename"],
             **metrics,
         })
+
+    if not extracted:
+        parser.error("No PHD reads could be extracted")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -217,6 +232,18 @@ def main():
         )
         writer.writeheader()
         writer.writerows(qc_rows)
+
+    if args.skip_missing_phd:
+        skipped_csv = output_dir / f"{args.sample}_Skipped_PHD_Reads.csv"
+        with skipped_csv.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=["Sample", "Read_ID", "Filename", "PHD_path", "Reason"],
+            )
+            writer.writeheader()
+            writer.writerows(skipped_rows)
+        print(f"Missing PHD reads skipped: {len(skipped_rows)}")
+        print(f"Skipped-read report: {skipped_csv}")
 
     from collections import Counter
 

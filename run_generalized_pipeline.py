@@ -28,6 +28,10 @@ SCRIPTS = [
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-missing-phd", action="store_true",
+        help="Allow inventory reads with missing PHD files to be skipped",
+    )
     parser.add_argument("--sample", required=True)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--reference", required=True, type=Path)
@@ -158,20 +162,24 @@ def main():
             flush=True,
         )
 
-        run(
-            2,
+        extraction_args = [
             "--inventory", inventory,
             "--sample", sample,
             "--output-dir", output / "initial",
-        )
+        ]
+        if args.skip_missing_phd:
+            extraction_args.append("--skip-missing-phd")
+        run(2, *extraction_args)
 
-        run(
-            3,
+        trimming_args = [
             "--fastq", initial_fastq,
             "--inventory", inventory,
             "--sample", sample,
             "--output-dir", output / "trimmed",
-        )
+        ]
+        if args.skip_missing_phd:
+            trimming_args.append("--skip-missing-phd")
+        run(3, *trimming_args)
 
         if not genomic_fastq.is_file() or genomic_fastq.stat().st_size == 0:
             raise ValueError("No retained genomic FASTQ reads.")
@@ -292,12 +300,14 @@ def main():
                 f"Candidate count mismatch: {expected} raw vs {observed} consolidated"
             )
 
-        run(
-            11,
+        qc_args = [
             "--sample", sample,
             "--results-dir", output,
             "--output-dir", output / "qc_report",
-        )
+        ]
+        if args.skip_missing_phd:
+            qc_args.append("--skip-missing-phd")
+        run(11, *qc_args)
 
         print("\nGENERALIZED PIPELINE COMPLETED")
         print("=" * 65)

@@ -48,3 +48,8 @@ metadata/*.tsv
 # Temporary development backups
 *.pre_*.py
 *backup*.py
+
+# Local analysis archives and script backups
+results_archive_*/
+*.bak
+*.bak_*
