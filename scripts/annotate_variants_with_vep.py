@@ -110,7 +110,7 @@ def main():
                        'VEP_annotation_found':bool(result)})
     out = dest / 'FEVR_Variant_VEP_Annotations.csv'
     save_csv(out,output)
-    print('STEP 918 — VEP GRCh38')
+    print('VEP ANNOTATION — VEP GRCh38')
     print('Input variants:',len(rows),'Annotated:',sum(r['VEP_annotation_found'] for r in output),'Missing:',sum(not r['VEP_annotation_found'] for r in output))
     for r in output:
         print(f'{r["GRCh38_variant"]:<35} {r["Most_severe_consequence"]:<36} {r["Selected_transcript"]}')

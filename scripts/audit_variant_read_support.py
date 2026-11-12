@@ -83,7 +83,7 @@ def main():
                             Evidence_mismatch_records=sum(not r['Evidence_IDs_match'] for r in passed)))
     save_csv(root / 'validation/FEVR_Variant_Read_Support_Audit.csv', audit)
     save_csv(root / 'validation/FEVR_Variant_Read_Support_Summary.csv', summary)
-    print('STEP 915 — READ SUPPORT')
+    print('READ SUPPORT AUDIT — READ SUPPORT')
     for r in summary:
         print(f'{r["Variant_type"]:<10} initial={r["Initial_candidates"]} Q20={r["Q20_pass"]} >=2={r["At_least_2_supporting_reads"]} F+R={r["Bidirectional_support"]}')
     print('Evidence files:', dict(files_found), 'Missing files:', len(missing), 'Conflicting direction mappings:', len(conflicts))

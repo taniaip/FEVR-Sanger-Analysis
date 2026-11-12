@@ -20,7 +20,7 @@ def main():
                             Criterion='At least one Q20 ALT-supporting read (flag proxy)' if typ == 'SNV' else 'Both immediate flanks Q20 or higher (flag proxy)'))
     out = root / 'validation/FEVR_Variant_Quality_Filter_Summary.csv'
     save_csv(out, summary)
-    print('STEP 914 — QUALITY FILTER SUMMARY')
+    print('QUALITY FILTERING — QUALITY FILTER SUMMARY')
     for r in summary:
         print(f'{r["Variant_type"]:<10} initial={r["Initial_candidates"]:>5} pass={r["Quality_pass"]:>5} fail={r["Quality_fail"]:>5} pass%={r["Quality_pass_percent"]:>6.2f}')
     print('TOTAL:', sum(r['Initial_candidates'] for r in summary), 'PASS:', sum(r['Quality_pass'] for r in summary))

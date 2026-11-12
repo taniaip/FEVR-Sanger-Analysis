@@ -46,7 +46,7 @@ def main():
     save_csv(dest / 'FEVR_Ranked_Variant_Candidates.csv', hits)
     save_csv(dest / 'FEVR_Bidirectionally_Supported_Variants.csv', [r for r in hits if r['Evidence_tier']==1], fields=list(hits[0]))
     save_csv(dest / 'FEVR_Variant_Evidence_Tier_Summary.csv', summary)
-    print('STEP 916 — EVIDENCE TIERS')
+    print('EVIDENCE RANKING — EVIDENCE TIERS')
     for r in summary:
         print(r)
     print('TOTAL RETAINED:', len(hits))

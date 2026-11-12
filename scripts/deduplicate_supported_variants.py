@@ -46,7 +46,7 @@ def main():
     dest = root / 'validation'
     save_csv(dest / 'FEVR_Unique_Bidirectional_Variants.csv', output)
     save_csv(dest / 'FEVR_Recurrent_Bidirectional_Variants.csv', [r for r in output if r['Number_of_samples']>=2], fields=list(output[0]) if output else None)
-    print('STEP 917 — DEDUPLICATED TIER 1')
+    print('VARIANT DEDUPLICATION — DEDUPLICATED TIER 1')
     print('Tier 1 sample records:',len(tier1),'Unique variants:',len(output),'Recurrent variants:',sum(r['Number_of_samples']>=2 for r in output))
     for r in output:
         print(f'{r["GRCh38_variant"]:<34} samples={r["Number_of_samples"]} reads={r["Total_supporting_reads"]} {r["Supporting_reads_by_sample"]}')

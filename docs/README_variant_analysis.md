@@ -1,6 +1,6 @@
 # FEVR Sanger candidate evidence pipeline — Steps 914–918
 
-Reproducible reporting scripts for the existing FEVR Sanger analysis. **No clinical validation is implied.** Input files are read without modification. The scripts write new or replace *generated* STEP 914–918 CSV/JSON outputs under `validation/`; keep previous versions under version control or back them up before rerunning.
+Reproducible reporting scripts for the existing FEVR Sanger analysis. **No clinical validation is implied.** Input files are read without modification. The scripts write new or replace *generated* variant analysis workflow CSV/JSON outputs under `validation/`; keep previous versions under version control or back them up before rerunning.
 
 ## Prerequisites
 
